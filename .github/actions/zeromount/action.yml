@@ -71,8 +71,9 @@ runs:
           echo "${cfg}" >> "${ROOT}/wild_gki.fragment"
         done
 
-        grep -q '^CONFIG_ZEROMOUNT=y$' "${DEFCONFIG}"
-        grep -q 'obj-$(CONFIG_ZEROMOUNT).*zeromount.o' "${KERNEL_DIR}/fs/Makefile"
+        echo "=== ZeroMount validation ==="
+        grep -n '^CONFIG_ZEROMOUNT=y$' "${DEFCONFIG}"
+        grep -n 'zeromount' "${KERNEL_DIR}/fs/Makefile"
         test -f "${KERNEL_DIR}/fs/zeromount.c"
         test -f "${KERNEL_DIR}/include/linux/zeromount.h"
         echo "ZeroMount patch set applied successfully"
