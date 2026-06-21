@@ -53,7 +53,8 @@ runs:
         # Disabled: upstream SUSFS already conflicts with enhanced SUSFS overlay
         # apply_one "${PATCH_DIR}/51_enhanced_susfs-android13-5.15.patch"
         apply_one "${PATCH_DIR}/60_zeromount-android13-5.15.patch"
-        apply_one "${PATCH_DIR}/70_ksu_safety-wksu-5.15.patch"
+        # Disabled: kernel/supercalls.c is absent in current KSU/WKSU tree
+        # apply_one "${PATCH_DIR}/70_ksu_safety-wksu-5.15.patch"
 
         CONFIGS=(
           CONFIG_ZEROMOUNT=y
