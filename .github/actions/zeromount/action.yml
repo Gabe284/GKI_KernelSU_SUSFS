@@ -1,0 +1,78 @@
+name: Apply ZeroMount VFS patch set
+description: Apply enhanced SUSFS, ZeroMount VFS, and WKSU safety patches to Android 13 GKI 5.15
+inputs:
+  version:
+    required: true
+  kernel_version:
+    required: true
+  android_version:
+    required: true
+runs:
+  using: composite
+  steps:
+    - name: Validate target and apply patches
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [[ "${{ inputs.version }}" != "android13-5.15" ]]; then
+          echo "ZeroMount overlay only supports android13-5.15" >&2
+          exit 1
+        fi
+
+        ROOT="${GITHUB_WORKSPACE}"
+        PATCH_DIR="${ROOT}/patches/zeromount"
+        if [[ -d "${ROOT}/kernel/common" ]]; then
+          KERNEL_DIR="${ROOT}/kernel/common"
+        elif [[ -d "${ROOT}/common" ]]; then
+          KERNEL_DIR="${ROOT}/common"
+        else
+          echo "Could not locate Android common kernel source tree" >&2
+          find "${ROOT}" -maxdepth 3 -type d -name common -print || true
+          exit 1
+        fi
+
+        echo "Kernel source: ${KERNEL_DIR}"
+        test -f "${KERNEL_DIR}/fs/namei.c"
+        test -f "${KERNEL_DIR}/fs/Kconfig"
+        test -f "${KERNEL_DIR}/kernel/supercalls.c"
+
+        apply_one() {
+          local patch_file="$1"
+          echo "Checking $(basename "${patch_file}")"
+          if patch -d "${KERNEL_DIR}" -p1 --dry-run --forward --batch < "${patch_file}"; then
+            patch -d "${KERNEL_DIR}" -p1 --forward --batch < "${patch_file}"
+          else
+            echo "Patch does not apply cleanly: ${patch_file}" >&2
+            mkdir -p "${ROOT}/patch-rejects/zeromount"
+            cp "${patch_file}" "${ROOT}/patch-rejects/zeromount/"
+            patch -d "${KERNEL_DIR}" -p1 --forward --batch --reject-file="${ROOT}/patch-rejects/zeromount/$(basename "${patch_file}").rej" < "${patch_file}" || true
+            exit 1
+          fi
+        }
+
+        apply_one "${PATCH_DIR}/51_enhanced_susfs-android13-5.15.patch"
+        apply_one "${PATCH_DIR}/60_zeromount-android13-5.15.patch"
+        apply_one "${PATCH_DIR}/70_ksu_safety-wksu-5.15.patch"
+
+        CONFIGS=(
+          CONFIG_ZEROMOUNT=y
+          CONFIG_KSU_SUSFS_SUS_KSTAT_REDIRECT=y
+          CONFIG_KSU_SUSFS_UNICODE_FILTER=y
+          CONFIG_KSU_SUSFS_HIDDEN_NAME=y
+          CONFIG_KSU_SUSFS_HARDENED=y
+        )
+
+        DEFCONFIG="${KERNEL_DIR}/arch/arm64/configs/gki_defconfig"
+        for cfg in "${CONFIGS[@]}"; do
+          key="${cfg%%=*}"
+          sed -i "/^${key}=/d;/^# ${key} is not set$/d" "${DEFCONFIG}"
+          echo "${cfg}" >> "${DEFCONFIG}"
+          sed -i "/^${key}=/d;/^# ${key} is not set$/d" "${ROOT}/wild_gki.fragment" 2>/dev/null || true
+          echo "${cfg}" >> "${ROOT}/wild_gki.fragment"
+        done
+
+        grep -q '^CONFIG_ZEROMOUNT=y$' "${DEFCONFIG}"
+        grep -q 'obj-$(CONFIG_ZEROMOUNT).*zeromount.o' "${KERNEL_DIR}/fs/Makefile"
+        test -f "${KERNEL_DIR}/fs/zeromount.c"
+        test -f "${KERNEL_DIR}/include/linux/zeromount.h"
+        echo "ZeroMount patch set applied successfully"
