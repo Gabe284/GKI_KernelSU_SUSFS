@@ -170,7 +170,6 @@ diff -ruN a/fs/proc/base.c b/fs/proc/base.c
  	pathname = d_path(path, tmp, PAGE_SIZE);
  	len = PTR_ERR(pathname);
  	if (IS_ERR(pathname))
-diff -ruN a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
 --- a/fs/readdir.c	2026-03-01 01:55:24.634434134 +0100
 +++ b/fs/readdir.c	2026-03-01 02:17:15.318177391 +0100
 @@ -21,6 +21,9 @@
@@ -327,7 +326,6 @@ diff -ruN a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
  	fdput_pos(f);
  	return error;
  }
-diff -ruN a/fs/stat.c b/fs/stat.c
 --- a/fs/statfs.c	2026-03-01 01:44:52.240844306 +0100
 +++ b/fs/statfs.c	2026-03-01 02:17:15.318471401 +0100
 @@ -14,6 +14,9 @@
