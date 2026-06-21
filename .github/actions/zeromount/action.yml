@@ -34,7 +34,6 @@ runs:
         echo "Kernel source: ${KERNEL_DIR}"
         test -f "${KERNEL_DIR}/fs/namei.c"
         test -f "${KERNEL_DIR}/fs/Kconfig"
-        test -f "${KERNEL_DIR}/kernel/supercalls.c"
 
         apply_one() {
           local patch_file="$1"
