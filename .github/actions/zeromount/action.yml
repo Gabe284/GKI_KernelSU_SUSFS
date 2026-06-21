@@ -34,6 +34,7 @@ runs:
         echo "Kernel source: ${KERNEL_DIR}"
         test -f "${KERNEL_DIR}/fs/namei.c"
         test -f "${KERNEL_DIR}/fs/Kconfig"
+        find "${KERNEL_DIR}/kernel" -maxdepth 2 -type f | grep -E "super|ksu" | head -50 || true
 
         apply_one() {
           local patch_file="$1"
@@ -49,7 +50,8 @@ runs:
           fi
         }
 
-        apply_one "${PATCH_DIR}/51_enhanced_susfs-android13-5.15.patch"
+        # Disabled: upstream SUSFS already conflicts with enhanced SUSFS overlay
+        # apply_one "${PATCH_DIR}/51_enhanced_susfs-android13-5.15.patch"
         apply_one "${PATCH_DIR}/60_zeromount-android13-5.15.patch"
         apply_one "${PATCH_DIR}/70_ksu_safety-wksu-5.15.patch"
 
