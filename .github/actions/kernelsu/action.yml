@@ -43,17 +43,28 @@ runs:
     - name: Extract KSU Version Info
       id: ksu-version
       shell: bash
-      working-directory: ${{ github.workspace }}/kernel/KernelSU-Next
+      working-directory: ${{ github.workspace }}/kernel/KernelSU-Next/kernel
       run: |
-        # Extract and export KSU version info
-        KSU_GIT_VERSION=$(git rev-list --count HEAD 2>/dev/null)
-        KSU_GIT_TAG=$(git describe --tags --abbrev=0 2>/dev/null)
-        KSU_COMMIT=$(git rev-parse --short HEAD 2>/dev/null)
+        set -euo pipefail
+
+        git rev-parse --is-inside-work-tree >/dev/null
+        test -f Kbuild
+
+        KSU_GIT_VERSION="$(git rev-list --count HEAD)"
+        KSU_GIT_TAG="$(git describe --tags --abbrev=0 2>/dev/null || printf '%s' 'v0.0.1')"
+        KSU_COMMIT="$(git rev-parse --short HEAD)"
         KSU_VERSION=$((30000 + KSU_GIT_VERSION))
-        
-        echo "KSU_GIT_TAG=$KSU_GIT_TAG" >> $GITHUB_ENV
-        echo "KSU_VERSION=$KSU_VERSION" >> $GITHUB_ENV
-        echo "KSU_COMMIT=$KSU_COMMIT" >> $GITHUB_ENV
+
+        {
+          printf 'KSU_GIT_TAG=%s\n' "$KSU_GIT_TAG"
+          printf 'KSU_VERSION=%s\n' "$KSU_VERSION"
+          printf 'KSU_COMMIT=%s\n' "$KSU_COMMIT"
+        } >> "$GITHUB_ENV"
+
+        echo "KernelSU repository: $(pwd)"
+        echo "KernelSU commit: $KSU_COMMIT"
+        echo "KernelSU tag: $KSU_GIT_TAG"
+        echo "KernelSU version: $KSU_VERSION"
 
     - name: 'Fix KernelSU-Next'
       shell: bash
