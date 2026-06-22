@@ -62,20 +62,24 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
-        # Apply base SUSFS patches
-        echo "=== SUSFS source tree ==="
-        find "${{ github.workspace }}/susfs4ksu" | head -200
+        set -euo pipefail
 
-        ls -la "${{ github.workspace }}/susfs4ksu/kernel_patches/" || true
-        ls -la "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/" || true
-        ls -la "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/" || true
+        echo "=== Copy SUSFS files ==="
+        cp "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/"* ./fs/
+        cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/"* ./include/linux/
+        cp "${{ github.workspace }}/susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.version }}.patch" ./
 
-        cp "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/"* "${{ github.workspace }}/kernel/common/fs/" || exit 1
-        cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/"* "${{ github.workspace }}/kernel/common/include/linux/" || exit 1
-        cp ${{ github.workspace }}/susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.version }}.patch ./ || exit 1
+        echo "=== Verify copied SUSFS files ==="
+        ls -la fs | grep -i susfs
+        ls -la include/linux | grep -i susfs
 
-        echo "=== Verify copied files ==="
-        ls -la fs | grep susfs || true
+        echo "=== Apply SUSFS Kconfig patch ==="
+        patch -p1 < 50_add_susfs_in_gki-${{ inputs.version }}.patch
+
+        echo "=== Verify SUSFS registration ==="
+        grep -n 'KSU_SUSFS' fs/Kconfig
+        grep -n 'susfs' fs/Makefile
+        test -f fs/susfs.c
 
     - name: Apply Android 12 5.10 Fake Patches
       shell: bash
@@ -204,37 +208,6 @@ runs:
           echo "Applying task_mmu.c Android 16 6.12 Fake Patch"
           sed -i 's/vma_data_pages/vma_pages/g' fs/proc/task_mmu.c
         fi
-
-    - name: Apply Kernel SUSFS Patches
-      shell: bash
-      working-directory: ${{ github.workspace }}/kernel/common
-      run: |
-        patch -p1 < 50_add_susfs_in_gki-${{ inputs.version }}.patch
-        echo "=== Force-register SUSFS in fs/Kconfig and fs/Makefile ==="
-        cd "${{ github.workspace }}/kernel/common"
-
-        if ! grep -q 'KSU_SUSFS' fs/Kconfig; then
-          {
-            echo ''
-            echo 'config KSU_SUSFS'
-            echo '        bool "KernelSU SUSFS support"'
-            echo '        default y'
-            echo ''
-          } >> fs/Kconfig
-        fi
-
-        if ! grep -q 'susfs.o' fs/Makefile; then
-          echo 'obj-$(CONFIG_KSU_SUSFS) += susfs.o' >> fs/Makefile
-        fi
-
-        test -f fs/susfs.c || {
-          echo "ERROR: fs/susfs.c missing after SUSFS copy" >&2
-          exit 1
-        }
-
-        grep -n 'KSU_SUSFS' fs/Kconfig
-        grep -n 'susfs.o' fs/Makefile
-
 
     - name: Revert Android 12 5.10 Fake Patches
       shell: bash
