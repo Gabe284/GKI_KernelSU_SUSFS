@@ -63,9 +63,19 @@ runs:
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
         # Apply base SUSFS patches
-        cp "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/"* "${{ github.workspace }}/kernel/common/fs/"
-        cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/"* "${{ github.workspace }}/kernel/common/include/linux/"
-        cp ${{ github.workspace }}/susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.version }}.patch ./
+        echo "=== SUSFS source tree ==="
+        find "${{ github.workspace }}/susfs4ksu" | head -200
+
+        ls -la "${{ github.workspace }}/susfs4ksu/kernel_patches/" || true
+        ls -la "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/" || true
+        ls -la "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/" || true
+
+        cp "${{ github.workspace }}/susfs4ksu/kernel_patches/fs/"* "${{ github.workspace }}/kernel/common/fs/" || exit 1
+        cp "${{ github.workspace }}/susfs4ksu/kernel_patches/include/linux/"* "${{ github.workspace }}/kernel/common/include/linux/" || exit 1
+        cp ${{ github.workspace }}/susfs4ksu/kernel_patches/50_add_susfs_in_gki-${{ inputs.version }}.patch ./ || exit 1
+
+        echo "=== Verify copied files ==="
+        ls -la fs | grep susfs || true
 
     - name: Apply Android 12 5.10 Fake Patches
       shell: bash
