@@ -200,6 +200,31 @@ runs:
       working-directory: ${{ github.workspace }}/kernel/common
       run: |
         patch -p1 < 50_add_susfs_in_gki-${{ inputs.version }}.patch
+        echo "=== Force-register SUSFS in fs/Kconfig and fs/Makefile ==="
+        cd "${{ github.workspace }}/kernel/common"
+
+        grep -q 'KSU_SUSFS' fs/Kconfig || {
+          cat >> fs/Kconfig <<'EOF'
+
+config KSU_SUSFS
+        bool "KernelSU SUSFS support"
+        default y
+
+EOF
+        }
+
+        grep -q 'susfs.o' fs/Makefile || {
+          echo 'obj-$(CONFIG_KSU_SUSFS) += susfs.o' >> fs/Makefile
+        }
+
+        test -f fs/susfs.c || {
+          echo "ERROR: fs/susfs.c missing after SUSFS copy" >&2
+          exit 1
+        }
+
+        grep -n 'KSU_SUSFS' fs/Kconfig
+        grep -n 'susfs.o' fs/Makefile
+
 
     - name: Revert Android 12 5.10 Fake Patches
       shell: bash
