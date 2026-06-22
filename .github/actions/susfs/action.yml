@@ -203,19 +203,19 @@ runs:
         echo "=== Force-register SUSFS in fs/Kconfig and fs/Makefile ==="
         cd "${{ github.workspace }}/kernel/common"
 
-        grep -q 'KSU_SUSFS' fs/Kconfig || {
-          cat >> fs/Kconfig <<'EOF'
+        if ! grep -q 'KSU_SUSFS' fs/Kconfig; then
+          {
+            echo ''
+            echo 'config KSU_SUSFS'
+            echo '        bool "KernelSU SUSFS support"'
+            echo '        default y'
+            echo ''
+          } >> fs/Kconfig
+        fi
 
-config KSU_SUSFS
-        bool "KernelSU SUSFS support"
-        default y
-
-EOF
-        }
-
-        grep -q 'susfs.o' fs/Makefile || {
+        if ! grep -q 'susfs.o' fs/Makefile; then
           echo 'obj-$(CONFIG_KSU_SUSFS) += susfs.o' >> fs/Makefile
-        }
+        fi
 
         test -f fs/susfs.c || {
           echo "ERROR: fs/susfs.c missing after SUSFS copy" >&2
