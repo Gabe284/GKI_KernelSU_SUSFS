@@ -32,6 +32,20 @@ runs:
         fi
 
         echo "Kernel source: ${KERNEL_DIR}"
+        echo "=== SUSFS source validation ==="
+        grep -n "KSU_SUSFS" "${KERNEL_DIR}/fs/Kconfig" || {
+          echo "ERROR: SUSFS Kconfig entries missing from fs/Kconfig" >&2
+          exit 1
+        }
+        grep -n "susfs" "${KERNEL_DIR}/fs/Makefile" || {
+          echo "ERROR: SUSFS Makefile entry missing from fs/Makefile" >&2
+          exit 1
+        }
+        test -f "${KERNEL_DIR}/fs/susfs.c" || {
+          echo "ERROR: fs/susfs.c missing" >&2
+          exit 1
+        }
+
         test -f "${KERNEL_DIR}/fs/namei.c"
         test -f "${KERNEL_DIR}/fs/Kconfig"
         find "${KERNEL_DIR}/kernel" -maxdepth 2 -type f | grep -E "super|ksu" | head -50 || true
