@@ -73,6 +73,30 @@ runs:
         ls -la fs | grep -i susfs
         ls -la include/linux | grep -i susfs
 
+        echo "=== Manual SUSFS include fixes ==="
+        NS="fs/namespace.c"
+        TMMU="fs/proc/task_mmu.c"
+
+        grep -q "susfs_def.h" "$NS" || sed -i '/#include <linux\/mnt_idmapping.h>/a\
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\
+#include <linux/susfs_def.h>\
+#endif\
+' "$NS"
+
+        grep -q "CL_COPY_MNT_NS" "$NS" || sed -i '/#include "internal.h"/a\
+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\
+extern bool susfs_is_current_ksu_domain(void);\
+extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;\
+#define CL_COPY_MNT_NS BIT(25)\
+#endif\
+' "$NS"
+
+        grep -q "susfs_def.h" "$TMMU" || sed -i '/#include <linux\/pkeys.h>/a\
+#if defined(CONFIG_KSU_SUSFS_SUS_KSTAT) || defined(CONFIG_KSU_SUSFS_SUS_MAP) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)\
+#include <linux/susfs_def.h>\
+#endif\
+' "$TMMU"
+
         echo "=== Apply SUSFS Kconfig patch ==="
         patch -p1 < 50_add_susfs_in_gki-${{ inputs.version }}.patch
 
