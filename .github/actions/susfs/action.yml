@@ -73,37 +73,54 @@ runs:
         ls -la fs | grep -i susfs
         ls -la include/linux | grep -i susfs
 
-        echo "=== Manual SUSFS include fixes ==="
-        NS="fs/namespace.c"
-        TMMU="fs/proc/task_mmu.c"
+        echo "=== Apply SUSFS kernel patch ==="
+        PATCH_STATUS=0
+        patch -p1 --forward --batch < "50_add_susfs_in_gki-${{ inputs.version }}.patch" || PATCH_STATUS=$?
 
-        grep -q "susfs_def.h" "$NS" || sed -i '/#include <linux\/mnt_idmapping.h>/a\
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\
-#include <linux/susfs_def.h>\
-#endif\
-' "$NS"
+        if [ "${{ inputs.version }}" = "android13-5.15" ]; then
+          EXPECTED_REJECT=0
+          for reject in fs/namespace.c.rej fs/proc/task_mmu.c.rej; do
+            if [ -f "$reject" ]; then
+              EXPECTED_REJECT=1
+            fi
+          done
 
-        grep -q "CL_COPY_MNT_NS" "$NS" || sed -i '/#include "internal.h"/a\
-#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT\
-extern bool susfs_is_current_ksu_domain(void);\
-extern struct static_key_true susfs_is_sdcard_android_data_not_decrypted;\
-#define CL_COPY_MNT_NS BIT(25)\
-#endif\
-' "$NS"
+          if [ "$PATCH_STATUS" -ne 0 ] && [ "$EXPECTED_REJECT" -eq 0 ]; then
+            echo "ERROR: SUSFS patch failed without the known Android 13 5.15 rejects" >&2
+            exit "$PATCH_STATUS"
+          fi
 
-        grep -q "susfs_def.h" "$TMMU" || sed -i '/#include <linux\/pkeys.h>/a\
-#if defined(CONFIG_KSU_SUSFS_SUS_KSTAT) || defined(CONFIG_KSU_SUSFS_SUS_MAP) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)\
-#include <linux/susfs_def.h>\
-#endif\
-' "$TMMU"
+          python3 "${{ github.workspace }}/.github/scripts/port_susfs_a13_5_15.py"
+          rm -f fs/namespace.c.rej fs/proc/task_mmu.c.rej
+        elif [ "$PATCH_STATUS" -ne 0 ]; then
+          exit "$PATCH_STATUS"
+        fi
 
-        echo "=== Apply SUSFS Kconfig patch ==="
-        patch -p1 < 50_add_susfs_in_gki-${{ inputs.version }}.patch
+        mapfile -t EXTRA_REJECTS < <(find . -type f -name '*.rej' -print | sort)
+        if (( ${#EXTRA_REJECTS[@]} )); then
+          echo "ERROR: unexpected SUSFS rejects remain:" >&2
+          for reject in "${EXTRA_REJECTS[@]}"; do
+            echo "$reject" >&2
+          done
+          exit 1
+        fi
 
-        echo "=== Verify SUSFS registration ==="
-        grep -n 'KSU_SUSFS' fs/Kconfig
-        grep -n 'susfs' fs/Makefile
+        echo "=== Verify SUSFS integration ==="
         test -f fs/susfs.c
+        grep -n 'susfs.o' fs/Makefile
+        grep -n '#include <linux/susfs_def.h>' fs/namespace.c
+        grep -n '#define CL_COPY_MNT_NS BIT(25)' fs/namespace.c
+        grep -n '#include <linux/susfs_def.h>' fs/proc/task_mmu.c
+
+        KSU_TREE="${{ github.workspace }}/kernel/KernelSU-Next/kernel"
+        test -d "$KSU_TREE"
+
+        if ! grep -RqsE '^[[:space:]]*config[[:space:]]+KSU_SUSFS([[:space:]]|$)' "$KSU_TREE"; then
+          echo "ERROR: KSU_SUSFS is not defined in KernelSU-Next Kconfig" >&2
+          exit 1
+        fi
+
+        grep -RnsE '^[[:space:]]*config[[:space:]]+KSU_SUSFS([[:space:]]|$)' "$KSU_TREE" | sed -n '1,20p'
 
     - name: Apply Android 12 5.10 Fake Patches
       shell: bash

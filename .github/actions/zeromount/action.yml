@@ -33,14 +33,23 @@ runs:
 
         echo "Kernel source: ${KERNEL_DIR}"
         echo "=== SUSFS source validation ==="
-        grep -n "KSU_SUSFS" "${KERNEL_DIR}/fs/Kconfig" || {
-          echo "ERROR: SUSFS Kconfig entries missing from fs/Kconfig" >&2
+        KSU_TREE="${ROOT}/kernel/KernelSU-Next/kernel"
+
+        test -d "${KSU_TREE}" || {
+          echo "ERROR: KernelSU-Next kernel tree missing" >&2
           exit 1
         }
+
+        grep -RqsE '^[[:space:]]*config[[:space:]]+KSU_SUSFS([[:space:]]|$)' "${KSU_TREE}" || {
+          echo "ERROR: KSU_SUSFS missing from KernelSU-Next Kconfig" >&2
+          exit 1
+        }
+
         grep -n "susfs" "${KERNEL_DIR}/fs/Makefile" || {
           echo "ERROR: SUSFS Makefile entry missing from fs/Makefile" >&2
           exit 1
         }
+
         test -f "${KERNEL_DIR}/fs/susfs.c" || {
           echo "ERROR: fs/susfs.c missing" >&2
           exit 1
