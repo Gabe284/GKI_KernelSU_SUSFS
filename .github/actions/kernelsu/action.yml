@@ -23,7 +23,7 @@ runs:
           curl -LSs "https://raw.githubusercontent.com/pershoot/KernelSU-Next/dev-susfs/kernel/setup.sh" | bash -s dev-susfs
         else
           COMMITS_JSON="${{ github.workspace }}/.github/config/commits.json"
-          KSU_SETUP_COMMIT=$(jq -er '.kernelsu.dev' "$COMMITS_JSON")
+          KSU_SETUP_COMMIT=$(jq -er '.kernelsu.dev_susfs' "$COMMITS_JSON")
           echo "Using pinned KernelSU commit: $KSU_SETUP_COMMIT"
           curl -LSs "https://raw.githubusercontent.com/pershoot/KernelSU-Next/dev-susfs/kernel/setup.sh" | bash -s dev-susfs
           git -C KernelSU-Next/kernel fetch --depth=50 origin "$KSU_SETUP_COMMIT"

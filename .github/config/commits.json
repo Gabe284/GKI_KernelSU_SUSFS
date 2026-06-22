@@ -1,6 +1,7 @@
 {
   "kernelsu": {
-    "dev": "5a4a71874caaad06aa126f761c93391de1d32361"
+    "dev": "5a4a71874caaad06aa126f761c93391de1d32361",
+    "dev_susfs": "5be16e06153657e8f9fe2c79d28af966a5db6add"
   },
   "susfs": {
     "gki-android12-5.10": "86114db0c49f20fa7857b8b559f3ab87cbc2d00d",
