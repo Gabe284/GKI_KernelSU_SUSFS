@@ -61,8 +61,9 @@ runs:
           CONFIG_TCP_CONG_BIC=y
           CONFIG_TCP_CONG_WESTWOOD=y
           CONFIG_TCP_CONG_HTCP=y
-          CONFIG_DEFAULT_BBR=y
-          CONFIG_DEFAULT_TCP_CONG="bbr"
+          CONFIG_DEFAULT_BBR=n
+          CONFIG_DEFAULT_CUBIC=y
+          CONFIG_DEFAULT_TCP_CONG="cubic"
           CONFIG_NET_SCH_FQ=y
           CONFIG_NET_SCH_FQ_CODEL=y
         
