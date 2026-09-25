@@ -33,7 +33,7 @@ on:
       use_latest_commits:
         required: false
         type: boolean
-        default: true
+        default: false
 
 jobs:
   build-gki:
@@ -316,6 +316,15 @@ jobs:
       with:
         clear_stats: false
 
+    - name: Build Bypass Kernel
+      env:
+        SOURCE_DATE_EPOCH: ${{ env.SOURCE_DATE_EPOCH }}
+        KBUILD_BUILD_TIMESTAMP: ${{ env.KBUILD_BUILD_TIMESTAMP }}
+      uses: ./.github/actions/build-kernel
+      with:
+        bypass: true
+        version: ${{ inputs.version }}
+
     - name: Save ccache
       continue-on-error: true
       uses: ./.github/actions/cache-save
@@ -324,7 +333,7 @@ jobs:
         cache_path: /home/runner/.ccache
         cache_key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}.${{ steps.extract.outputs.sublevel }}-${{ inputs.os_patch_level }}
         cache_bucket: "ccache-cache"
-        compression_level: 9
+        compression_level: 3
         github_token: ${{ secrets.MY_GITHUB_TOKEN }}
 
     - name: Save lto-cache
@@ -335,7 +344,7 @@ jobs:
         cache_path: /home/runner/.ld_cache
         cache_key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}.${{ steps.extract.outputs.sublevel }}-${{ inputs.os_patch_level }}
         cache_bucket: "lto-cache"
-        compression_level: 9
+        compression_level: 3
         github_token: ${{ secrets.MY_GITHUB_TOKEN }}
 
     - name: Save bazel-cache
@@ -346,17 +355,8 @@ jobs:
         cache_path: /home/runner/.cache/bazel
         cache_key: ${{ inputs.android_version }}-${{ inputs.kernel_version }}.${{ steps.extract.outputs.sublevel }}-${{ inputs.os_patch_level }}
         cache_bucket: "bazel-cache"
-        compression_level: 9
+        compression_level: 3
         github_token: ${{ secrets.MY_GITHUB_TOKEN }}
-
-    - name: Build Bypass Kernel
-      env:
-        SOURCE_DATE_EPOCH: ${{ env.SOURCE_DATE_EPOCH }}
-        KBUILD_BUILD_TIMESTAMP: ${{ env.KBUILD_BUILD_TIMESTAMP }}
-      uses: ./.github/actions/build-kernel
-      with:
-        bypass: true
-        version: ${{ inputs.version }}
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v7
