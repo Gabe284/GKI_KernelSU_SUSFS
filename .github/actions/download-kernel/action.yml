@@ -66,8 +66,9 @@ runs:
           if timeout $SYNC_TIMEOUT repo sync -c --current-branch --no-clone-bundle --no-tags --jobs-checkout=4 -j4; then
             echo "repo sync succeeded on attempt $attempt."
             break
+          else
+            rc=$?
           fi
-          rc=$?
           if [ $rc -eq 124 ]; then
             echo "repo sync timed out after $SYNC_TIMEOUT."
           else

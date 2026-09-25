@@ -1,5 +1,5 @@
 name: 'Disk Cleanup'
-description: 'Free up disk space by moving large unnecessary directories to a temporary location and deleting them in the background.'
+description: 'Free up disk space by moving large unnecessary directories to a temporary location and deleting them synchronously.'
 runs:
   using: 'composite'
   steps:
@@ -43,8 +43,7 @@ runs:
         wait
         
         echo "Relocation complete."
-        echo "Launching background purge..."
-        (
+        echo "Running synchronous disk purge..."
           sudo nice -n 19 ionice -c 3 rm -rf ./.background_trash
           sudo apt-get purge -y firefox google-chrome-stable microsoft-edge-stable > /dev/null 2>&1 || true
           sudo apt-get autoremove -y > /dev/null 2>&1 || true
@@ -52,8 +51,8 @@ runs:
           if command -v docker >/dev/null 2>&1; then
             docker rmi $(docker images -q) 2>/dev/null || true
           fi
-        ) > /dev/null 2>&1 &
-        
-        disown
-        
+        echo "Purge complete. Disk space after cleanup:"
+        df -h /
+        df -h .
+
         echo "::endgroup::"
