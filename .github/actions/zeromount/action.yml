@@ -7,6 +7,8 @@ inputs:
     required: true
   android_version:
     required: true
+  sublevel:
+    required: true
 runs:
   using: composite
   steps:
@@ -18,6 +20,18 @@ runs:
           echo "ZeroMount overlay only supports android13-5.15" >&2
           exit 1
         fi
+
+        if [[ "${{ inputs.kernel_version }}" != "5.15" ]]; then
+          echo "ZeroMount Kansas target requires kernel_version=5.15; got: ${{ inputs.kernel_version }}" >&2
+          exit 1
+        fi
+
+        if [[ "${{ inputs.sublevel }}" != "189" ]]; then
+          echo "ZeroMount Kansas target requires sublevel=189; got: ${{ inputs.sublevel }}" >&2
+          exit 1
+        fi
+
+        echo "ZeroMount target validated: android13-5.15 / 5.15.189"
 
         ROOT="${GITHUB_WORKSPACE}"
         PATCH_DIR="${ROOT}/patches/zeromount"
