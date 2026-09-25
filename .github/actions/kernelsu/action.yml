@@ -4,7 +4,7 @@ inputs:
   use_latest_commits:
     description: 'Use the latest commit on the branch instead of the pinned commit'
     required: false
-    default: true
+    default: false
 
 runs:
   using: composite
