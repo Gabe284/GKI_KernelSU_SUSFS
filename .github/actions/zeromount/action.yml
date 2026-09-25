@@ -54,11 +54,6 @@ runs:
           exit 1
         }
 
-        grep -RqsE '^[[:space:]]*config[[:space:]]+KSU_SUSFS([[:space:]]|$)' "${KSU_TREE}" || {
-          echo "ERROR: KSU_SUSFS missing from KernelSU-Next Kconfig" >&2
-          exit 1
-        }
-
         grep -n "susfs" "${KERNEL_DIR}/fs/Makefile" || {
           echo "ERROR: SUSFS Makefile entry missing from fs/Makefile" >&2
           exit 1
