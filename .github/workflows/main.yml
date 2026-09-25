@@ -51,7 +51,7 @@ on:
       use_latest_commits:
         description: "Use branch tip for KernelSU and SUSFS instead of pinned commits"
         type: boolean
-        default: true
+        default: false
       test_release_notes:
         description: "Test release notes only"
         type: boolean
