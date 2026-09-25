@@ -1,5 +1,4 @@
 name: 'Show Cache Stats'
-description: 'Displays statistics for ccache and Bazel remote cache to help analyze cache performance and hit rates'
 inputs:
   clear_stats:
     description: 'Whether to clear ccache stats after displaying (default: true)'
@@ -51,13 +50,13 @@ runs:
         echo "===================="
         echo "=== ccache stats ==="
         echo "===================="
-        
+
         if ! command -v ccache >/dev/null 2>&1; then
           echo "⚠️  ccache not installed, skipping ccache stats"
           echo "===================="
           exit 0
         fi
-        
+
         ccache -s || true
         echo "====================="
         echo "=== ccache config ==="
@@ -66,22 +65,22 @@ runs:
         echo "====================="
 
         STATS="$(ccache -s)"
-        
+
         CACHEABLE=$(echo "$STATS" | awk '/Cacheable calls:/ {
-          match($0, /[0-9]+/); 
+          match($0, /[0-9]+/);
           print substr($0, RSTART, RLENGTH)
         }' | head -n1)
-        
+
         HITS=$(echo "$STATS" | awk '/^[[:space:]]*Hits:/ {
-          match($0, /[0-9]+/); 
+          match($0, /[0-9]+/);
           print substr($0, RSTART, RLENGTH)
         }' | head -n1)
-        
+
         DIRECT=$(echo "$STATS" | awk '/Direct:/ {
-          match($0, /[0-9]+/); 
+          match($0, /[0-9]+/);
           print substr($0, RSTART, RLENGTH)
         }' | head -n1)
-        
+
         if [ "${CACHEABLE:-0}" -gt 0 ]; then
           HIT_RATE=$(awk -v h="${HITS:-0}" -v c="$CACHEABLE" 'BEGIN{printf "%.1f", (h/c)*100}')
           DIRECT_RATE=$(awk -v d="${DIRECT:-0}" -v c="$CACHEABLE" 'BEGIN{printf "%.1f", (d/c)*100}')
@@ -89,7 +88,7 @@ runs:
           HIT_RATE="0.0"
           DIRECT_RATE="0.0"
         fi
-        
+
         echo "hit_rate=${HIT_RATE}%"
         echo "direct_rate=${DIRECT_RATE}%"
 
@@ -115,27 +114,15 @@ runs:
         echo "==============="
         summarize_dir /home/runner/.ccache 10 5 || true
 
-    - name: Show Bazel Cache folder Stats
-      shell: bash
-      working-directory: ${{ github.workspace }}
-      run: |
-        set -euo pipefail
-        # shellcheck disable=SC1091
-        source /tmp/cache_summary.sh
-        echo "===================="
-        echo "=== .cache/bazel ==="
-        echo "===================="
-        summarize_dir /home/runner/.cache/bazel 10 5 || true
-        
+
+
     - name: Show ld cache folder Stats
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        set -euo pipefail
-        # shellcheck disable=SC1091
+        set +e
         source /tmp/cache_summary.sh
         echo "================="
         echo "=== .ld_cache ==="
         echo "================="
         summarize_dir /home/runner/.ld_cache 10 5 || true
-        

@@ -92,7 +92,7 @@ jobs:
             echo "| --- | --- | --- | --- | --- |"
           } >> "$summary_file"
 
-          current_kernelsu_commit="$(jq -r '.kernelsu.dev' "$COMMITS_JSON")"
+          current_kernelsu_commit="$(jq -r '.kernelsu.dev_susfs' "$COMMITS_JSON")"
           latest_kernelsu_commit="$(github_latest_commit)"
           current_kernelsu_message="$(github_commit_message "$current_kernelsu_commit")"
           latest_kernelsu_message="$(github_latest_message)"

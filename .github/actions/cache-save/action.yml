@@ -112,11 +112,7 @@ runs:
           upload_with_retry() {
             local file=$1
             local max_attempts=3
-            local timeout_duration="10m"
-
-            if [ "$TAG_NAME" != "bazel-cache" ]; then
-              timeout_duration="30m"
-            fi
+            local timeout_duration="30m"
 
             for ((i=1; i<=max_attempts; i++)); do
               echo "  Attempt $i for $file..."
@@ -144,10 +140,10 @@ runs:
           chunk_size="1500M"
           split_required=false
 
-          if [ "$TAG_NAME" != "bazel-cache" ]; then
+          if true; then
             chunk_size="250M"
             split_required=true
-          elif [ "$FILE_SIZE" -gt "$MAX_SIZE" ]; then
+          elif false; then
             split_required=true
           fi
 

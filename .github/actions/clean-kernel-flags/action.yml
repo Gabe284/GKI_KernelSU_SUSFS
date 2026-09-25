@@ -1,5 +1,5 @@
 name: 'Clean Kernel Flags'
-description: 'Clean dirty flags'
+description: 'Clean dirty flags for the legacy Android GKI build system'
 
 runs:
   using: "composite"
@@ -8,15 +8,8 @@ runs:
       shell: bash
       working-directory: ${{ github.workspace }}/kernel
       run: |
-        # Clean dirty flags and ABI exports based on build system
-        if [ -f "build/build.sh" ]; then
-          # Old build system (5.10, 5.15, early 6.1)
-          sed -i 's/-dirty//' common/scripts/setlocalversion
-        else
-          # Bazel build system (newer kernels)
-          sed -i "/stable_scmversion_cmd/s/-maybe-dirty//g" build/kernel/kleaf/impl/stamp.bzl
-          sed -i 's/-dirty//' common/scripts/setlocalversion
-        fi
+        # Kansas uses the legacy Android GKI build system.
+        sed -i 's/-dirty//' common/scripts/setlocalversion
 
         # Commit changes to avoid dirty state during build
         cd ${{ github.workspace }}/kernel/common
