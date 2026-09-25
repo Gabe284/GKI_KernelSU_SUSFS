@@ -65,10 +65,9 @@ jobs:
         testing: false
 
     - name: Setup more Swap (for LTO)
-      uses: thejerrybao/setup-swap-space@v1   # or pierotofy/set-swap-space
+      uses: actionhippie/swap-space@v1
       with:
-        swap-size-gb: 16          # 10-24 GB is common for heavy LTO
-        # swap-space-path: /mnt/swapfile   # optional
+        size: 16G
 
     - name: Setup Build Environment
       uses: ./.github/actions/setup-build-environment
