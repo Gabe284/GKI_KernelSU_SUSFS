@@ -31,7 +31,6 @@ on:
         type: choice
         options:
           - defconfig
-          - gki_defconfig
         default: defconfig
         required: true
 
@@ -97,14 +96,6 @@ jobs:
           echo "repo_url=$REPO_URL" >> "$GITHUB_OUTPUT"
           echo "source_ref=$SOURCE_REF" >> "$GITHUB_OUTPUT"
           echo "Resolved $TRACK source branch: $SOURCE_REF"
-      - name: Checkout kernel source
-        uses: actions/checkout@v5
-        with:
-          repository: torvalds/linux
-          ref: master
-          path: repository-meta
-          sparse-checkout: README
-          persist-credentials: false
       - name: Clone selected upstream kernel branch
         env:
           REPO_URL: ${{ steps.source.outputs.repo_url }}
