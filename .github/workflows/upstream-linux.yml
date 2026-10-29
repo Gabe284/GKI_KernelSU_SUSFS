@@ -1,0 +1,172 @@
+name: Upstream Linux ARM64 Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      track:
+        description: "Upstream Linux release track"
+        type: choice
+        options:
+          - mainline
+          - stable
+          - longterm
+        default: stable
+        required: true
+      series:
+        description: "Kernel series (auto chooses the newest branch for the selected track)"
+        type: choice
+        options:
+          - auto
+          - 7.2
+          - 6.18
+          - 6.12
+          - 6.6
+          - 6.1
+          - 5.15
+          - 5.10
+        default: auto
+        required: true
+      defconfig:
+        description: "ARM64 config target"
+        type: choice
+        options:
+          - defconfig
+          - gki_defconfig
+        default: defconfig
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-upstream-arm64:
+    name: "Linux ${{ inputs.track }} / ${{ inputs.series }} (ARM64)"
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y             bc bison build-essential flex gcc-aarch64-linux-gnu             git libelf-dev libncurses-dev libssl-dev lz4 rsync dwarves             python3 python3-pip
+      - name: Resolve upstream source ref
+        id: source
+        shell: bash
+        env:
+          TRACK: ${{ inputs.track }}
+          SERIES: ${{ inputs.series }}
+        run: |
+          set -euo pipefail
+          STABLE_URL="https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git"
+          MAINLINE_URL="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git"
+          case "$TRACK" in
+            mainline)
+              REPO_URL="$MAINLINE_URL"
+              SOURCE_REF="master"
+              ;;
+            stable)
+              REPO_URL="$STABLE_URL"
+              if [[ "$SERIES" == "auto" ]]; then
+                SOURCE_REF="$(git ls-remote --heads "$REPO_URL" 'refs/heads/linux-*.y' | awk -F/ '{print $NF}' | sort -Vu | tail -n1)"
+              else
+                SOURCE_REF="linux-$SERIES.y"
+              fi
+              ;;
+            longterm)
+              REPO_URL="$STABLE_URL"
+              if [[ "$SERIES" == "auto" ]]; then
+                for candidate in 6.18 6.12 6.6 6.1 5.15 5.10; do
+                  if git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/linux-$candidate.y" >/dev/null 2>&1; then
+                    SOURCE_REF="linux-$candidate.y"
+                    break
+                  fi
+                done
+              else
+                SOURCE_REF="linux-$SERIES.y"
+              fi
+              ;;
+            *) echo "Unsupported track: $TRACK" >&2; exit 2 ;;
+          esac
+          if [[ -z "${SOURCE_REF:-}" ]]; then
+            echo "Could not resolve a source branch for track=$TRACK series=$SERIES" >&2
+            exit 1
+          fi
+          if ! git ls-remote --exit-code --heads "$REPO_URL" "refs/heads/$SOURCE_REF" >/dev/null 2>&1; then
+            echo "Source branch does not exist: $SOURCE_REF" >&2
+            exit 1
+          fi
+          echo "repo_url=$REPO_URL" >> "$GITHUB_OUTPUT"
+          echo "source_ref=$SOURCE_REF" >> "$GITHUB_OUTPUT"
+          echo "Resolved $TRACK source branch: $SOURCE_REF"
+      - name: Checkout kernel source
+        uses: actions/checkout@v5
+        with:
+          repository: torvalds/linux
+          ref: master
+          path: repository-meta
+          sparse-checkout: README
+          persist-credentials: false
+      - name: Clone selected upstream kernel branch
+        env:
+          REPO_URL: ${{ steps.source.outputs.repo_url }}
+          SOURCE_REF: ${{ steps.source.outputs.source_ref }}
+        run: |
+          set -euo pipefail
+          git clone --depth=1 --single-branch --branch "$SOURCE_REF" "$REPO_URL" linux
+          cd linux
+          {
+            echo "Track: ${{ inputs.track }}"
+            echo "Branch: $SOURCE_REF"
+            echo "Commit: $(git rev-parse HEAD)"
+            echo "Commit date: $(git show -s --format=%cI HEAD)"
+            echo "Commit subject: $(git show -s --format=%s HEAD)"
+          } | tee ../source-metadata.txt
+      - name: Configure ARM64 kernel
+        working-directory: linux
+        env:
+          DEFCONFIG: ${{ inputs.defconfig }}
+        run: |
+          set -euo pipefail
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- "$DEFCONFIG"
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- olddefconfig
+          cp .config ../kernel.config
+      - name: Build Image and modules
+        working-directory: linux
+        run: |
+          set -euo pipefail
+          JOBS="$(nproc)"
+          if (( JOBS > 4 )); then JOBS=4; fi
+          make -j"$JOBS" ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image modules
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- -s kernelrelease | tee ../kernel-release.txt
+          mkdir -p ../module-staging
+          make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- INSTALL_MOD_PATH="$GITHUB_WORKSPACE/module-staging" modules_install
+          tar -C ../module-staging -czf ../modules-arm64.tar.gz .
+          cp arch/arm64/boot/Image ../Image
+          cp System.map ../System.map
+      - name: Package build metadata
+        run: |
+          set -euo pipefail
+          sha256sum Image kernel.config System.map modules-arm64.tar.gz source-metadata.txt kernel-release.txt > SHA256SUMS
+          {
+            echo "## Upstream Linux ARM64 build"
+            echo
+            cat source-metadata.txt
+            echo
+            echo "Kernel release: $(cat kernel-release.txt)"
+            echo
+            echo "This is a generic ARM64 compile artifact, not an Android GKI image and not a device-ready boot image."
+            echo "No KernelSU, SUSFS, vendor modules, boot image packaging, or device-specific patches are applied in this workflow."
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload upstream kernel artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-${{ inputs.track }}-${{ steps.source.outputs.source_ref }}-arm64
+          path: |
+            Image
+            kernel.config
+            kernel-release.txt
+            System.map
+            modules-arm64.tar.gz
+            source-metadata.txt
+            SHA256SUMS
+          if-no-files-found: error
+          compression-level: 6
